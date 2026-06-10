@@ -1,0 +1,537 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced Face Attendance System</title>
+
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI,Arial,sans-serif}
+body{background:radial-gradient(circle at top,#2563eb,#020617 60%);color:white;min-height:100vh}
+header{padding:20px 8%;display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.08);backdrop-filter:blur(15px);position:sticky;top:0;z-index:10}
+header h2{font-size:24px}
+nav a{color:#cbd5e1;text-decoration:none;margin-left:18px;font-weight:600}
+section{padding:50px 8%}
+.hero{display:grid;grid-template-columns:1fr 1fr;gap:30px;align-items:center;min-height:85vh}
+h1{font-size:48px;line-height:1.05;margin-bottom:18px}
+span{color:#38bdf8}
+p{color:#cbd5e1;line-height:1.7;margin-bottom:15px}
+button{padding:12px 18px;border:none;border-radius:14px;background:linear-gradient(135deg,#38bdf8,#8b5cf6);color:white;font-weight:800;cursor:pointer;margin:5px}
+button:hover{transform:translateY(-2px);box-shadow:0 10px 25px rgba(56,189,248,.35)}
+.card,.box{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:24px;padding:24px;box-shadow:0 25px 70px rgba(0,0,0,.35)}
+input,select{width:100%;padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:white;margin-bottom:14px;outline:none}
+select option{color:black}
+.camera-box{position:relative;background:#020617;border-radius:22px;overflow:hidden;margin-top:18px;border:1px solid rgba(255,255,255,.15)}
+video{width:100%;display:block;transform:scaleX(-1)}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%;transform:scaleX(-1)}
+.status{padding:13px;border-radius:14px;background:rgba(255,255,255,.08);margin-top:15px;font-weight:700;color:#cbd5e1}
+.good{color:#86efac}.warn{color:#fde68a}.bad{color:#fecaca}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.two{display:grid;grid-template-columns:.9fr 1.1fr;gap:24px}
+table{width:100%;border-collapse:collapse;margin-top:15px}
+th,td{padding:13px;border-bottom:1px solid rgba(255,255,255,.12);text-align:left}
+th{color:#e2e8f0}td{color:#cbd5e1}
+.present{color:#86efac;font-weight:800}.late{color:#fde68a;font-weight:800}
+.id-card{width:320px;height:410px;margin:auto;border-radius:28px;background:linear-gradient(145deg,rgba(255,255,255,.18),rgba(255,255,255,.05));border:1px solid rgba(255,255,255,.2);animation:float 4s ease-in-out infinite;text-align:center;padding:30px;position:relative;overflow:hidden}
+.avatar{width:110px;height:110px;background:linear-gradient(135deg,#38bdf8,#8b5cf6);border-radius:50%;margin:35px auto 20px;display:grid;place-items:center;font-size:50px}
+.scan{position:absolute;left:0;top:0;height:4px;width:100%;background:#22c55e;box-shadow:0 0 25px #22c55e;animation:scan 2.5s linear infinite}
+@keyframes float{0%,100%{transform:rotateY(-8deg) rotateX(5deg)}50%{transform:rotateY(8deg) rotateX(-5deg) translateY(-15px)}}
+@keyframes scan{0%{top:25px}50%{top:370px}100%{top:25px}}
+footer{text-align:center;padding:25px;color:#94a3b8;background:rgba(255,255,255,.05)}
+@media(max-width:900px){.hero,.two{grid-template-columns:1fr}.grid{grid-template-columns:1fr}h1{font-size:36px}header{flex-direction:column;gap:15px}.id-card{width:100%;max-width:320px}}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h2>🎓 Smart Face Attendance</h2>
+  <nav>
+    <a href="#home">Home</a>
+    <a href="#register">Register</a>
+    <a href="#records">Records</a>
+  </nav>
+</header>
+
+<section id="home" class="hero">
+  <div>
+    <h1>Advanced Face <span>Registration System</span></h1>
+    <p>
+      Fast face registration and recognition system using webcam.
+      It captures multiple face samples for better accuracy.
+    </p>
+    <button onclick="startCamera()">Start Camera</button>
+    <button onclick="goRegister()">Go to Register</button>
+  </div>
+
+  <div>
+    <div class="id-card">
+      <div class="scan"></div>
+      <div class="avatar">👤</div>
+      <h2 id="cardName">Student ID</h2>
+      <p id="cardReg">Register No: --</p>
+      <p id="cardDept">Department: ECE</p>
+      <h3 id="cardStatus" class="good">Ready</h3>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h1>Dashboard</h1>
+  <br>
+  <div class="grid">
+    <div class="box">
+      <p>Registered Faces</p>
+      <h2 id="registeredCount">0</h2>
+    </div>
+    <div class="box">
+      <p>Total Attendance</p>
+      <h2 id="totalCount">0</h2>
+    </div>
+    <div class="box">
+      <p>Present</p>
+      <h2 id="presentCount">0</h2>
+    </div>
+    <div class="box">
+      <p>Late Entry</p>
+      <h2 id="lateCount">0</h2>
+    </div>
+  </div>
+</section>
+
+<section id="register">
+  <h1>Face Registration Panel</h1>
+  <br>
+
+  <div class="two">
+    <div class="card">
+      <input type="text" id="studentName" placeholder="Student Name">
+      <input type="text" id="regNo" placeholder="Register Number">
+
+      <select id="department">
+        <option value="EIE">Electronics and Instrumentation</option>
+        <option value="ECE">Electronics and Communication</option>
+        <option value="CSE">Computer Science</option>
+        <option value="EEE">Electrical and Electronics</option>
+        <option value="MECH">Mechanical</option>
+      </select>
+
+      <select id="entryType">
+        <option value="Present">Present</option>
+        <option value="Late Entry">Late Entry</option>
+      </select>
+
+      <button onclick="startCamera()">Start Camera</button>
+      <button onclick="registerFace()">Register Face</button>
+      <button onclick="recognizeFace()">Recognize Face</button>
+      <button onclick="markAttendance()">Mark Attendance</button>
+      <button onclick="clearData()">Clear All</button>
+
+      <div class="camera-box">
+        <video id="video" autoplay muted playsinline></video>
+        <canvas id="canvas"></canvas>
+      </div>
+
+      <div class="status warn" id="statusBox">Loading face models...</div>
+    </div>
+
+    <div class="card" id="records">
+      <h2>Attendance Records</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Reg No</th>
+            <th>Dept</th>
+            <th>Status</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody id="recordTable">
+          <tr><td colspan="5">No attendance marked yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Smart Attendance Monitoring System | Advanced Face Registration Demo
+</footer>
+
+<script>
+let video = document.getElementById("video");
+let canvas = document.getElementById("canvas");
+let ctx = canvas.getContext("2d");
+
+let registeredStudents = [];
+let attendanceRecords = [];
+let recognizedStudent = null;
+let modelsLoaded = false;
+let cameraStarted = false;
+
+const MODEL_URL = "https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights";
+
+window.onload = async function(){
+  await loadModels();
+  loadSavedData();
+};
+
+async function loadModels(){
+  try{
+    setStatus("Loading face recognition models. Please wait...", "warn");
+
+    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+    await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+    await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+
+    modelsLoaded = true;
+    setStatus("✅ Models loaded. Click Start Camera.", "good");
+  }catch(error){
+    setStatus("❌ Model loading failed. Keep internet ON and use Live Server.", "bad");
+  }
+}
+
+async function startCamera(){
+  try{
+    let stream = await navigator.mediaDevices.getUserMedia({
+      video:{
+        width:{ideal:640},
+        height:{ideal:480},
+        facingMode:"user"
+      }
+    });
+
+    video.srcObject = stream;
+
+    await new Promise(resolve=>{
+      video.onloadedmetadata = ()=>{
+        video.play();
+        resolve();
+      };
+    });
+
+    cameraStarted = true;
+    setStatus("✅ Camera started. Keep your face close and centered.", "good");
+  }catch(error){
+    setStatus("❌ Camera error. Allow camera permission and use Live Server.", "bad");
+  }
+}
+
+function goRegister(){
+  document.getElementById("register").scrollIntoView({behavior:"smooth"});
+}
+
+function setStatus(message,type){
+  let box = document.getElementById("statusBox");
+  box.innerText = message;
+  box.className = "status " + type;
+}
+
+function setupCanvas(){
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+}
+
+async function detectFaceOnce(){
+  setupCanvas();
+
+  const options = new faceapi.TinyFaceDetectorOptions({
+    inputSize:416,
+    scoreThreshold:0.15
+  });
+
+  const detection = await faceapi
+    .detectSingleFace(video, options)
+    .withFaceLandmarks()
+    .withFaceDescriptor();
+
+  return detection;
+}
+
+async function getFaceDescriptorWithRetry(){
+  if(!modelsLoaded){
+    alert("Please wait. Face models are loading.");
+    return null;
+  }
+
+  if(!cameraStarted || video.readyState < 2){
+    alert("Start camera first and wait 2 seconds.");
+    return null;
+  }
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  let detection = null;
+
+  for(let i=0;i<12;i++){
+    setStatus("Scanning face... attempt " + (i+1) + "/12", "warn");
+    detection = await detectFaceOnce();
+
+    if(detection){
+      break;
+    }
+
+    await new Promise(resolve=>setTimeout(resolve,250));
+  }
+
+  if(!detection){
+    setStatus("❌ No face detected. Move closer, improve light, remove mask/glasses, keep face straight.", "bad");
+    return null;
+  }
+
+  const resized = faceapi.resizeResults(detection,{
+    width:video.videoWidth,
+    height:video.videoHeight
+  });
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  faceapi.draw.drawDetections(canvas,resized);
+  faceapi.draw.drawFaceLandmarks(canvas,resized);
+
+  setStatus("✅ Face detected successfully.", "good");
+
+  return detection.descriptor;
+}
+
+function averageDescriptors(descriptors){
+  let average = new Array(128).fill(0);
+
+  descriptors.forEach(desc=>{
+    for(let i=0;i<128;i++){
+      average[i] += desc[i];
+    }
+  });
+
+  for(let i=0;i<128;i++){
+    average[i] = average[i] / descriptors.length;
+  }
+
+  return average;
+}
+
+async function registerFace(){
+  let name = document.getElementById("studentName").value.trim();
+  let regNo = document.getElementById("regNo").value.trim();
+  let department = document.getElementById("department").value;
+
+  if(name === "" || regNo === ""){
+    alert("Enter student name and register number.");
+    return;
+  }
+
+  let samples = [];
+
+  setStatus("Registering face. Keep looking at camera...", "warn");
+
+  for(let i=0;i<5;i++){
+    setStatus("Capturing face sample " + (i+1) + "/5", "warn");
+
+    let descriptor = await getFaceDescriptorWithRetry();
+
+    if(descriptor){
+      samples.push(Array.from(descriptor));
+    }
+
+    await new Promise(resolve=>setTimeout(resolve,500));
+  }
+
+  if(samples.length < 3){
+    setStatus("❌ Registration failed. Need at least 3 clear face samples.", "bad");
+    return;
+  }
+
+  let averagedDescriptor = averageDescriptors(samples);
+
+  let student = {
+    name:name,
+    regNo:regNo,
+    department:department,
+    descriptor:averagedDescriptor
+  };
+
+  let index = registeredStudents.findIndex(s=>s.regNo === regNo);
+
+  if(index >= 0){
+    registeredStudents[index] = student;
+  }else{
+    registeredStudents.push(student);
+  }
+
+  saveData();
+  updateDashboard();
+
+  document.getElementById("cardName").innerText = name;
+  document.getElementById("cardReg").innerText = "Register No: " + regNo;
+  document.getElementById("cardDept").innerText = "Department: " + department;
+  document.getElementById("cardStatus").innerText = "Face Registered";
+  document.getElementById("cardStatus").className = "good";
+
+  setStatus("✅ Face registered successfully for " + name, "good");
+}
+
+async function recognizeFace(){
+  if(registeredStudents.length === 0){
+    alert("Register at least one face first.");
+    return;
+  }
+
+  let descriptor = await getFaceDescriptorWithRetry();
+
+  if(!descriptor){
+    return;
+  }
+
+  let bestStudent = null;
+  let bestDistance = 999;
+
+  registeredStudents.forEach(student=>{
+    let savedDescriptor = new Float32Array(student.descriptor);
+    let distance = faceapi.euclideanDistance(descriptor,savedDescriptor);
+
+    if(distance < bestDistance){
+      bestDistance = distance;
+      bestStudent = student;
+    }
+  });
+
+  if(bestDistance < 0.58){
+    recognizedStudent = bestStudent;
+
+    document.getElementById("studentName").value = bestStudent.name;
+    document.getElementById("regNo").value = bestStudent.regNo;
+    document.getElementById("department").value = bestStudent.department;
+
+    document.getElementById("cardName").innerText = bestStudent.name;
+    document.getElementById("cardReg").innerText = "Register No: " + bestStudent.regNo;
+    document.getElementById("cardDept").innerText = "Department: " + bestStudent.department;
+    document.getElementById("cardStatus").innerText = "Face Recognized";
+    document.getElementById("cardStatus").className = "good";
+
+    let match = Math.round((1 - bestDistance) * 100);
+
+    setStatus("✅ Recognized: " + bestStudent.name + " | Match: " + match + "%", "good");
+  }else{
+    recognizedStudent = null;
+    setStatus("❌ Face not matched. Register this face first.", "bad");
+  }
+}
+
+function markAttendance(){
+  if(!recognizedStudent){
+    alert("Recognize face first, then mark attendance.");
+    return;
+  }
+
+  let entryType = document.getElementById("entryType").value;
+  let time = new Date().toLocaleTimeString();
+
+  attendanceRecords.push({
+    name:recognizedStudent.name,
+    regNo:recognizedStudent.regNo,
+    department:recognizedStudent.department,
+    status:entryType,
+    time:time
+  });
+
+  saveData();
+  updateTable();
+  updateDashboard();
+
+  document.getElementById("cardStatus").innerText = entryType;
+  document.getElementById("cardStatus").className = entryType === "Present" ? "good" : "warn";
+
+  setStatus("✅ Attendance marked for " + recognizedStudent.name, "good");
+
+  recognizedStudent = null;
+}
+
+function updateTable(){
+  let table = document.getElementById("recordTable");
+  table.innerHTML = "";
+
+  if(attendanceRecords.length === 0){
+    table.innerHTML = `<tr><td colspan="5">No attendance marked yet</td></tr>`;
+    return;
+  }
+
+  attendanceRecords.forEach(record=>{
+    let row = document.createElement("tr");
+    let statusClass = record.status === "Present" ? "present" : "late";
+
+    row.innerHTML = `
+      <td>${record.name}</td>
+      <td>${record.regNo}</td>
+      <td>${record.department}</td>
+      <td class="${statusClass}">${record.status}</td>
+      <td>${record.time}</td>
+    `;
+
+    table.appendChild(row);
+  });
+}
+
+function updateDashboard(){
+  let present = attendanceRecords.filter(r=>r.status==="Present").length;
+  let late = attendanceRecords.filter(r=>r.status==="Late Entry").length;
+
+  document.getElementById("registeredCount").innerText = registeredStudents.length;
+  document.getElementById("totalCount").innerText = attendanceRecords.length;
+  document.getElementById("presentCount").innerText = present;
+  document.getElementById("lateCount").innerText = late;
+}
+
+function saveData(){
+  localStorage.setItem("registeredStudents",JSON.stringify(registeredStudents));
+  localStorage.setItem("attendanceRecords",JSON.stringify(attendanceRecords));
+}
+
+function loadSavedData(){
+  let savedStudents = localStorage.getItem("registeredStudents");
+  let savedRecords = localStorage.getItem("attendanceRecords");
+
+  if(savedStudents){
+    registeredStudents = JSON.parse(savedStudents);
+  }
+
+  if(savedRecords){
+    attendanceRecords = JSON.parse(savedRecords);
+  }
+
+  updateTable();
+  updateDashboard();
+}
+
+function clearData(){
+  let ok = confirm("Clear all registered faces and attendance records?");
+
+  if(!ok){
+    return;
+  }
+
+  registeredStudents = [];
+  attendanceRecords = [];
+  recognizedStudent = null;
+
+  localStorage.removeItem("registeredStudents");
+  localStorage.removeItem("attendanceRecords");
+
+  updateTable();
+  updateDashboard();
+
+  document.getElementById("cardName").innerText = "Student ID";
+  document.getElementById("cardReg").innerText = "Register No: --";
+  document.getElementById("cardDept").innerText = "Department: EIE";
+  document.getElementById("cardStatus").innerText = "Ready";
+  document.getElementById("cardStatus").className = "good";
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  setStatus("All data cleared. Register again.", "warn");
+}
+</script>
+
+</body>
+</html>
